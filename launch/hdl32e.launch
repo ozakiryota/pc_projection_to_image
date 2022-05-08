@@ -1,0 +1,32 @@
+<launch>
+	<!-- global rosparam -->
+	<param name="use_sim_time" value="true"/>
+
+	<!-- rosbag -->
+	<node pkg="rosbag" type="play" name="player" args="--clock $(env HOME)/rosbag/sq2_velodyne/dkan_outdoor/2018-10-31-08-37-11.bag"/>
+
+	<!-- rviz -->
+	<node pkg="rviz" type="rviz" name="rviz" args="-d $(find pc_projection_to_image)/rviz_config/velodyne.rviz"/>
+
+	<node pkg="image_transport" type="republish" name="republish_f" args="compressed raw">
+		<remap from="in" to="/camera/color/image_raw"/>
+		<!-- <remap from="out" to="/decompressed_image"/> -->
+		<remap from="out" to="/camera/color/image_raw"/>
+	</node>
+
+	<!-- sensor driver -->
+	<include file="$(find velodyne_pointcloud)/launch/32e_points.launch"/>
+
+	<!-- main -->
+	<node pkg="pc_projection_to_image" type="pc_projection_to_image" name="pc_projection_to_image" output="screen">
+		<remap from="/point_cloud" to="/velodyne_points"/>
+		<!-- <remap from="/image" to="/decompressed_image"/> -->
+		<remap from="/image" to="/camera/color/image_raw"/>
+		<!-- <param name="x_m" type="double" value="1.0"/> -->
+		<!-- <param name="y_m" type="double" value="2.0"/> -->
+		<!-- <param name="z_m" type="double" value="3.0"/> -->
+		<!-- <param name="r_deg" type="double" value="10.0"/> -->
+		<!-- <param name="p_deg" type="double" value="20.0"/> -->
+		<!-- <param name="y_deg" type="double" value="30.0"/> -->
+	</node>
+</launch>
