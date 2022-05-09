@@ -38,7 +38,13 @@ RUN apt-get update && \
 	# git clone https://github.com/ozakiryota/pc_projection_to_image.git && \
 	# cd ~/catkin_ws/ && \
 	# /bin/bash -c "source /opt/ros/noetic/setup.bash; catkin_make"
-########## Velodyne driver ##########
+########## Optional package ##########
+## pc_transform
+RUN cd ~/catkin_ws/src && \
+	git clone https://github.com/ozakiryota/pc_transform.git && \
+	cd ~/catkin_ws/ && \
+	/bin/bash -c "source /opt/ros/noetic/setup.bash; catkin_make"
+## Velodyne driver
 RUN apt-get update && \
 	apt-get install -y \
 		ros-noetic-pcl-ros \

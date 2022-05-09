@@ -5,28 +5,30 @@
 	<!-- rosbag -->
 	<node pkg="rosbag" type="play" name="player" args="--clock $(env HOME)/rosbag/sq2_velodyne/dkan_outdoor/2018-10-31-08-37-11.bag"/>
 
+	<!-- tf -->
+	<node pkg="tf" type="static_transform_publisher" name="velodyne_to_camera" args="0.111393 -0.0103084 -0.0137764 0.0 0.0 0.0 velodyne camera_link 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="camera_to_color" args="0.000 0.015 0.000 0.001 -0.001 -0.017 camera_link camera_color_frame 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="color_to_optical" args="0.000 0.000 0.000 -1.5707963265 0.000 -1.5707963265 camera_color_frame camera_color_optical_frame 100"/>
+
 	<!-- rviz -->
 	<node pkg="rviz" type="rviz" name="rviz" args="-d $(find pc_projection_to_image)/rviz_config/velodyne.rviz"/>
 
-	<node pkg="image_transport" type="republish" name="republish_f" args="compressed raw">
+	<!-- pre-process -->
+	<node pkg="image_transport" type="republish" name="republish" args="compressed raw">
 		<remap from="in" to="/camera/color/image_raw"/>
-		<!-- <remap from="out" to="/decompressed_image"/> -->
 		<remap from="out" to="/camera/color/image_raw"/>
 	</node>
-
-	<!-- sensor driver -->
 	<include file="$(find velodyne_pointcloud)/launch/32e_points.launch"/>
+	<node pkg="pc_transform" type="tf_transform" name="tf_transform">
+		<remap from="/point_cloud" to="/velodyne_points"/>
+		<remap from="/point_cloud/transformed" to="/velodyne_points/transformed"/>
+		<param name="target_frame" type="string" value="camera_color_optical_frame"/>
+		<param name="use_msg_stamp" type="bool" value="false"/>
+	</node>
 
 	<!-- main -->
 	<node pkg="pc_projection_to_image" type="pc_projection_to_image" name="pc_projection_to_image" output="screen">
-		<remap from="/point_cloud" to="/velodyne_points"/>
-		<!-- <remap from="/image" to="/decompressed_image"/> -->
+		<remap from="/point_cloud" to="/velodyne_points/transformed"/>
 		<remap from="/image" to="/camera/color/image_raw"/>
-		<!-- <param name="x_m" type="double" value="1.0"/> -->
-		<!-- <param name="y_m" type="double" value="2.0"/> -->
-		<!-- <param name="z_m" type="double" value="3.0"/> -->
-		<!-- <param name="r_deg" type="double" value="10.0"/> -->
-		<!-- <param name="p_deg" type="double" value="20.0"/> -->
-		<!-- <param name="y_deg" type="double" value="30.0"/> -->
 	</node>
 </launch>

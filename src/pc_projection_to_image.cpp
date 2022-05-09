@@ -26,6 +26,7 @@ class PcProjectionToImage{
 		/*buffer*/
 		pcl::PointCloud<pcl::PointXYZI>::Ptr pc_ {new pcl::PointCloud<pcl::PointXYZI>};
 		image_geometry::PinholeCameraModel camera_model_;
+		cv::Mat image_;
 		/*parameter*/
 
 	public:
@@ -33,7 +34,7 @@ class PcProjectionToImage{
 		void callbackPc(const sensor_msgs::PointCloud2ConstPtr& msg);
 		void callbackImage(const sensor_msgs::ImageConstPtr& img_msg, const sensor_msgs::CameraInfoConstPtr& info_msg);
 		void project(cv_bridge::CvImagePtr cv_bridge_ptr);
-		// void publication(pcl::PointCloud<pcl::PointXYZI>::Ptr pc);
+		void publication(cv_bridge::CvImagePtr cv_bridge_ptr);
 };
 
 PcProjectionToImage::PcProjectionToImage()
@@ -58,13 +59,13 @@ void PcProjectionToImage::callbackPc(const sensor_msgs::PointCloud2ConstPtr& msg
 
 void PcProjectionToImage::callbackImage(const sensor_msgs::ImageConstPtr& img_msg, const sensor_msgs::CameraInfoConstPtr& info_msg)
 {
-	std::cout << "--- callback ---" << std::endl;
+	// std::cout << "--- callback ---" << std::endl;
 	if(!pc_->points.empty()){
 		camera_model_.fromCameraInfo(info_msg);
 		try{
 			cv_bridge::CvImagePtr cv_bridge_ptr = cv_bridge::toCvCopy(img_msg, sensor_msgs::image_encodings::BGR8);
 			project(cv_bridge_ptr);
-			// publication(pc);
+			publication(cv_bridge_ptr);
 		}
 		catch(cv_bridge::Exception& exc){
 			ROS_ERROR("cv_bridge exception: %s", exc.what());
@@ -74,23 +75,34 @@ void PcProjectionToImage::callbackImage(const sensor_msgs::ImageConstPtr& img_ms
 
 void PcProjectionToImage::project(cv_bridge::CvImagePtr cv_bridge_ptr)
 {
-	std::cout << "--- project ---" << std::endl;
+	// std::cout << "--- project ---" << std::endl;
 	for(size_t i = 0; i < pc_->points.size(); ++i){
-		cv::Point3d p3d(
-			pc_->points[i].x,
-			pc_->points[i].y,
-			pc_->points[i].z
-		);
+		/*depth > 0*/
+		if(pc_->points[i].z > 0){
+			cv::Point3d p3d(
+				pc_->points[i].x,
+				pc_->points[i].y,
+				pc_->points[i].z
+			);
+			cv::Point2d p2d = camera_model_.project3dToPixel(p3d);
+			// p2d = camera_model_.unrectifyPoint(p2d);
+			// cv::circle(cv_bridge_ptr->image, p2d, 1, cv::Scalar(255, 0, 0), -1);
+
+			if(p2d.x >= 0 && p2d.x < cv_bridge_ptr->image.cols && p2d.y >= 0 && p2d.y < cv_bridge_ptr->image.rows){
+				cv::circle(cv_bridge_ptr->image, p2d, 1, CV_RGB(255, 0, 0), -1);
+			}
+			// std::cout << p3d << std::endl;
+			// std::cout << p2d << std::endl;
+			// std::cout << cv_bridge_ptr->image.cols << std::endl;	//640
+			// std::cout << cv_bridge_ptr->image.rows << std::endl;	//480
+		}
 	}
 }
 
-// void PcProjectionToImage::publication(pcl::PointCloud<pcl::PointXYZI>::Ptr pc)
-// {
-//     sensor_msgs::PointCloud2 ros_pc;
-//     pcl::toROSMsg(*pc, ros_pc);
-// 	if(publish_frame_ != "")	ros_pc.header.frame_id = publish_frame_;
-//     pub_.publish(ros_pc);
-// }
+void PcProjectionToImage::publication(cv_bridge::CvImagePtr cv_bridge_ptr)
+{
+	pub_image_.publish(cv_bridge_ptr->toImageMsg());
+}
 
 int main(int argc, char** argv)
 {
