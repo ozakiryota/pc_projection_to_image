@@ -34,15 +34,20 @@ RUN apt-get update && \
 		libpcl-dev \
 		ros-noetic-pcl-conversions \
 		ros-noetic-rviz && \
-	cd ~/catkin_ws/src
-	# git clone https://github.com/ozakiryota/pc_projection_to_image.git && \
-	# cd ~/catkin_ws/ && \
-	# /bin/bash -c "source /opt/ros/noetic/setup.bash; catkin_make"
-########## Optional package ##########
+	cd ~/catkin_ws/src && \
+	git clone https://github.com/ozakiryota/pc_projection_to_image.git && \
+	cd ~/catkin_ws/ && \
+	/bin/bash -c "source /opt/ros/noetic/setup.bash; catkin_make"
+########## Related packages ##########
+## pc_store
+RUN cd ~/catkin_ws/src && \
+	git clone https://github.com/ozakiryota/pc_store.git && \
+	cd ~/catkin_ws && \
+	/bin/bash -c "source /opt/ros/noetic/setup.bash; catkin_make"
 ## pc_transform
 RUN cd ~/catkin_ws/src && \
 	git clone https://github.com/ozakiryota/pc_transform.git && \
-	cd ~/catkin_ws/ && \
+	cd ~/catkin_ws && \
 	/bin/bash -c "source /opt/ros/noetic/setup.bash; catkin_make"
 ## Velodyne driver
 RUN apt-get update && \
@@ -55,7 +60,7 @@ RUN apt-get update && \
 		libpcap-dev && \
 	cd ~/catkin_ws/src && \
 	git clone https://github.com/ros-drivers/velodyne.git && \
-	cd ~/catkin_ws/ && \
+	cd ~/catkin_ws && \
 	/bin/bash -c "source /opt/ros/noetic/setup.bash; catkin_make"
 ########## Initial position ##########
 WORKDIR /root/catkin_ws/src/pc_projection_to_image

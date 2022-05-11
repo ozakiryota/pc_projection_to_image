@@ -19,8 +19,13 @@
 		<remap from="out" to="/camera/color/image_raw"/>
 	</node>
 	<include file="$(find velodyne_pointcloud)/launch/32e_points.launch"/>
+	<node pkg="pc_store" name="pc_store_with_odometry" type="pc_store_with_odometry">
+		<remap from="/cloud" to="/velodyne_points"/>
+		<remap from="/cloud/stored" to="/velodyne_points/stored"/>
+		<param name="scan_limit" type="int" value="30"/>
+	</node>
 	<node pkg="pc_transform" type="tf_transform" name="tf_transform">
-		<remap from="/point_cloud" to="/velodyne_points"/>
+		<remap from="/point_cloud" to="/velodyne_points/stored"/>
 		<remap from="/point_cloud/transformed" to="/velodyne_points/transformed"/>
 		<param name="target_frame" type="string" value="camera_color_optical_frame"/>
 		<param name="use_msg_stamp" type="bool" value="false"/>

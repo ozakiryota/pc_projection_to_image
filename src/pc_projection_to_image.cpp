@@ -28,12 +28,14 @@ class PcProjectionToImage{
 		image_geometry::PinholeCameraModel camera_model_;
 		cv::Mat image_;
 		/*parameter*/
+		double max_range_;
 
 	public:
 		PcProjectionToImage();
 		void callbackPc(const sensor_msgs::PointCloud2ConstPtr& msg);
 		void callbackImage(const sensor_msgs::ImageConstPtr& img_msg, const sensor_msgs::CameraInfoConstPtr& info_msg);
 		void project(cv_bridge::CvImagePtr cv_bridge_ptr);
+		void rangeToRGB(double range, int& r, int& g, int& b);
 		void publication(cv_bridge::CvImagePtr cv_bridge_ptr);
 };
 
@@ -42,8 +44,8 @@ PcProjectionToImage::PcProjectionToImage()
 {
 	std::cout << "--- pc_projection_to_image ---" << std::endl;
 	/*parameter*/
-	// nh_private_.param("publish_frame", publish_frame_, std::string(""));
-	// std::cout << "publish_frame_ = " << publish_frame_ << std::endl;
+	nh_private_.param("max_range", max_range_, 100.0);
+	std::cout << "max_range_ = " << max_range_ << std::endl;
 	/*subscriber*/
 	pc_sub_ = nh_.subscribe("/point_cloud", 1, &PcProjectionToImage::callbackPc, this);
 	camera_sub_ = it_.subscribeCamera("/image", 1, &PcProjectionToImage::callbackImage, this);
@@ -59,7 +61,6 @@ void PcProjectionToImage::callbackPc(const sensor_msgs::PointCloud2ConstPtr& msg
 
 void PcProjectionToImage::callbackImage(const sensor_msgs::ImageConstPtr& img_msg, const sensor_msgs::CameraInfoConstPtr& info_msg)
 {
-	// std::cout << "--- callback ---" << std::endl;
 	if(!pc_->points.empty()){
 		camera_model_.fromCameraInfo(info_msg);
 		try{
@@ -75,7 +76,6 @@ void PcProjectionToImage::callbackImage(const sensor_msgs::ImageConstPtr& img_ms
 
 void PcProjectionToImage::project(cv_bridge::CvImagePtr cv_bridge_ptr)
 {
-	// std::cout << "--- project ---" << std::endl;
 	for(size_t i = 0; i < pc_->points.size(); ++i){
 		/*depth > 0*/
 		if(pc_->points[i].z > 0){
@@ -85,18 +85,30 @@ void PcProjectionToImage::project(cv_bridge::CvImagePtr cv_bridge_ptr)
 				pc_->points[i].z
 			);
 			cv::Point2d p2d = camera_model_.project3dToPixel(p3d);
-			// p2d = camera_model_.unrectifyPoint(p2d);
-			// cv::circle(cv_bridge_ptr->image, p2d, 1, cv::Scalar(255, 0, 0), -1);
+			double range = sqrt(
+				pc_->points[i].x * pc_->points[i].x 
+				+ pc_->points[i].y * pc_->points[i].y 
+				+ pc_->points[i].z * pc_->points[i].z
+			);
+			int r, g, b;
+			rangeToRGB(range, r, g, b);
 
 			if(p2d.x >= 0 && p2d.x < cv_bridge_ptr->image.cols && p2d.y >= 0 && p2d.y < cv_bridge_ptr->image.rows){
-				cv::circle(cv_bridge_ptr->image, p2d, 1, CV_RGB(255, 0, 0), -1);
+				cv::circle(cv_bridge_ptr->image, p2d, 1, CV_RGB(r, g, b), -1);
 			}
-			// std::cout << p3d << std::endl;
-			// std::cout << p2d << std::endl;
-			// std::cout << cv_bridge_ptr->image.cols << std::endl;	//640
-			// std::cout << cv_bridge_ptr->image.rows << std::endl;	//480
 		}
 	}
+}
+
+void PcProjectionToImage::rangeToRGB(double range, int& r, int& g, int& b)
+{
+	const int max_scale = 255;
+	range = std::min(range, max_range_);
+	int scale = int(range / max_range_ * 3 * max_scale);
+	
+	r = std::min(scale, max_scale);
+	g = std::min(scale - r, max_scale);
+	b = std::min(scale - r - g, max_scale);
 }
 
 void PcProjectionToImage::publication(cv_bridge::CvImagePtr cv_bridge_ptr)
