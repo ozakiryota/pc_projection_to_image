@@ -33,6 +33,8 @@ RUN apt-get update && \
     apt-get install -y \
 		libpcl-dev \
 		ros-noetic-pcl-conversions \
+		ros-noetic-image-geometry \
+		ros-noetic-cv-bridge \
 		ros-noetic-rviz && \
 	cd ~/catkin_ws/src && \
 	git clone https://github.com/ozakiryota/pc_projection_to_image.git && \
