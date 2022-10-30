@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(pc_projection_to_image)
 
-add_compile_options(-std=c++14 -O2 -g -Wall)
+add_compile_options(-std=c++17 -O2 -g -Wall)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
   image_geometry
   cv_bridge
+  rosbag
 )
 find_package(PCL)
 find_package(OpenCV)
@@ -39,6 +40,13 @@ include_directories(
 
 add_executable(pc_projection_to_image src/pc_projection_to_image.cpp)
 target_link_libraries(pc_projection_to_image
+  ${catkin_LIBRARIES}
+  ${PCL_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+)
+
+add_executable(pc_projection_to_image_offline src/pc_projection_to_image_offline.cpp)
+target_link_libraries(pc_projection_to_image_offline
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
   ${OpenCV_LIBRARIES}
