@@ -39,8 +39,9 @@ class PcProjectionToImageOffline{
         float max_range_;
         float debug_hz_;
         /*function*/
-        void getCameraModel();
         void openRosBag(rosbag::Bag& bag, const std::string& rosbag_path, int mode);
+        void getCameraModel();
+        void bufferFirstPc();
         void projectPc(const sensor_msgs::PointCloud2ConstPtr& ros_pc_ptr, cv::Mat& image, bool range_to_rgb);
         void rangeToRGB(float range, int& r, int& g, int& b);
 
@@ -96,8 +97,20 @@ PcProjectionToImageOffline::PcProjectionToImageOffline()
 
     /*initialize*/
     getCameraModel();
+    bufferFirstPc();
     std::filesystem::copy(load_rosbag_path_, save_rosbag_path_, std::filesystem::copy_options::overwrite_existing);
     openRosBag(save_bag_, save_rosbag_path_, rosbag::bagmode::Append);
+}
+
+void PcProjectionToImageOffline::openRosBag(rosbag::Bag& bag, const std::string& rosbag_path, int mode)
+{
+    try{
+        bag.open(rosbag_path, mode);
+    }
+    catch(rosbag::BagException const&){
+        std::cerr << "Cannot open " << rosbag_path << std::endl;
+        exit(true);
+    }
 }
 
 void PcProjectionToImageOffline::getCameraModel()
@@ -124,14 +137,29 @@ void PcProjectionToImageOffline::getCameraModel()
     exit(true);
 }
 
-void PcProjectionToImageOffline::openRosBag(rosbag::Bag& bag, const std::string& rosbag_path, int mode)
+void PcProjectionToImageOffline::bufferFirstPc()
 {
-    try{
-        bag.open(rosbag_path, mode);
-    }
-    catch(rosbag::BagException const&){
-        std::cerr << "Cannot open " << rosbag_path << std::endl;
-        exit(true);
+    rosbag::Bag load_bag;
+    openRosBag(load_bag, load_rosbag_path_, rosbag::bagmode::Read);
+
+    rosbag::View view;
+    rosbag::View::iterator view_itr;
+    view.addQuery(load_bag, rosbag::TypeQuery("sensor_msgs/PointCloud2"));
+    view_itr = view.begin();
+
+    while(view_itr != view.end()){
+        bool every_topic_is_buffered = true;
+        for(PcTopic& pc_topic : pc_topic_list_){
+            if(!pc_topic.is_buffered){
+                if(view_itr->getTopic() == pc_topic.topic_name){
+                    pc_topic.pc_ptr = view_itr->instantiate<sensor_msgs::PointCloud2>();
+                    pc_topic.is_buffered = true;
+                }
+                else    every_topic_is_buffered = false;
+            }
+        }
+        if(every_topic_is_buffered) return;
+        view_itr++;
     }
 }
 
