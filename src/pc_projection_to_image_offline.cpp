@@ -158,9 +158,13 @@ void PcProjectionToImageOffline::bufferFirstPc()
                 else    every_topic_is_buffered = false;
             }
         }
-        if(every_topic_is_buffered) return;
+        if(every_topic_is_buffered){
+            load_bag.close();
+            return;
+        }
         view_itr++;
     }
+    load_bag.close();
 }
 
 void PcProjectionToImageOffline::execute()
