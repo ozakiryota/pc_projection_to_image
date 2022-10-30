@@ -21,12 +21,13 @@ class PcProjectionToImageOffline{
 		ros::Publisher image_debug_pub_;
         /*buffer*/
 		image_geometry::PinholeCameraModel camera_model_;
-        struct PcSuite{
+        struct PcTopic{
+            std::string topic_name;
             sensor_msgs::PointCloud2ConstPtr pc_ptr;
             bool is_buffered = false;
             ros::Publisher debug_pub;
         };
-        std::vector<PcSuite> pc_suite_list_;
+        std::vector<PcTopic> pc_topic_list_;
         rosbag::Bag save_bag_;
 		/*parameter*/
 		std::string load_rosbag_path_;
@@ -37,7 +38,6 @@ class PcProjectionToImageOffline{
 		std::string save_depth_childname_;
         float max_range_;
         float debug_hz_;
-        std::vector<std::string> pc_topic_list_;
         /*function*/
         void getCameraModel();
         void openRosBag(rosbag::Bag& bag, const std::string& rosbag_path, int mode);
@@ -84,18 +84,15 @@ PcProjectionToImageOffline::PcProjectionToImageOffline()
 	std::cout << "debug_hz_ = " << debug_hz_ << std::endl;
 
     for(size_t i = 0; ; i++){
-        std::string tmp_topic_name;
-        if(!nh_private_.getParam("pc_" + std::to_string(i), tmp_topic_name))  break;
-        pc_topic_list_.push_back(tmp_topic_name);
-        std::cout << "pc_topic_list_[" << i << "] = " << pc_topic_list_[i] << std::endl;
+        PcTopic tmp_pc_topic;
+        if(!nh_private_.getParam("pc_" + std::to_string(i), tmp_pc_topic.topic_name))  break;
+        pc_topic_list_.push_back(tmp_pc_topic);
+        std::cout << "pc_topic_list_[" << i << "].topic_name = " << pc_topic_list_[i].topic_name << std::endl;
     }
 
     /*publisher*/
 	image_debug_pub_ = nh_.advertise<sensor_msgs::Image>(save_image_name_, 1);
-    pc_suite_list_.resize(pc_topic_list_.size());
-    for(size_t i = 0; i < pc_topic_list_.size(); i++){
-        pc_suite_list_[i].debug_pub = nh_.advertise<sensor_msgs::PointCloud2>(pc_topic_list_[i], 1);
-    }
+    for(PcTopic& pc_topic : pc_topic_list_) pc_topic.debug_pub = nh_.advertise<sensor_msgs::PointCloud2>(pc_topic.topic_name, 1);
 
     /*initialize*/
     getCameraModel();
@@ -143,7 +140,8 @@ void PcProjectionToImageOffline::execute()
     rosbag::Bag load_bag;
     openRosBag(load_bag, load_rosbag_path_, rosbag::bagmode::Read);
 
-    std::vector<std::string> query_topic_list = pc_topic_list_;
+    std::vector<std::string> query_topic_list;
+    for(const PcTopic& pc_topic : pc_topic_list_)   query_topic_list.push_back(pc_topic.topic_name);
     query_topic_list.push_back(camera_info_name_);
     query_topic_list.push_back(load_image_name_);
 
@@ -157,18 +155,18 @@ void PcProjectionToImageOffline::execute()
     		if(view_itr->getTopic() == camera_info_name_)   camera_model_.fromCameraInfo(*view_itr->instantiate<sensor_msgs::CameraInfo>());
         }
         else if(view_itr->getDataType() == "sensor_msgs/PointCloud2"){
-            for(size_t i = 0; i < pc_topic_list_.size(); i++){
-                if(view_itr->getTopic() == pc_topic_list_[i]){
-                    pc_suite_list_[i].pc_ptr = view_itr->instantiate<sensor_msgs::PointCloud2>();
-                    pc_suite_list_[i].debug_pub.publish(*pc_suite_list_[i].pc_ptr);
+            for(PcTopic& pc_topic : pc_topic_list_){
+                if(view_itr->getTopic() == pc_topic.topic_name){
+                    pc_topic.pc_ptr = view_itr->instantiate<sensor_msgs::PointCloud2>();
+                    pc_topic.debug_pub.publish(*pc_topic.pc_ptr);
                     cv_bridge::CvImage cv_64fc1(
-                        pc_suite_list_[i].pc_ptr->header,
+                        pc_topic.pc_ptr->header,
                         "64FC1",
                         cv::Mat(camera_model_.cameraInfo().height, camera_model_.cameraInfo().width, CV_64FC1, cv::Scalar(-1))
                     );
-                    projectPc(pc_suite_list_[i].pc_ptr, cv_64fc1.image, false);
-                    save_bag_.write(pc_topic_list_[i] + "/" + save_depth_childname_, cv_64fc1.toImageMsg()->header.stamp, cv_64fc1.toImageMsg());
-                    pc_suite_list_[i].is_buffered = true;
+                    projectPc(pc_topic.pc_ptr, cv_64fc1.image, false);
+                    save_bag_.write(pc_topic.topic_name + "/" + save_depth_childname_, cv_64fc1.toImageMsg()->header.stamp, cv_64fc1.toImageMsg());
+                    pc_topic.is_buffered = true;
                     break;
                 }
             }
@@ -183,10 +181,10 @@ void PcProjectionToImageOffline::execute()
                     cv::Mat(camera_model_.cameraInfo().height, camera_model_.cameraInfo().width, CV_64FC1, cv::Scalar(-1))
                 );
                 bool has_projected = false;
-                for(const PcSuite& pc_suite : pc_suite_list_){
-                    if(pc_suite.is_buffered){
-                        projectPc(pc_suite.pc_ptr, cv_bgr8_ptr->image, true);
-                        projectPc(pc_suite.pc_ptr, cv_64fc1.image, false);
+                for(const PcTopic& pc_topic : pc_topic_list_){
+                    if(pc_topic.is_buffered){
+                        projectPc(pc_topic.pc_ptr, cv_bgr8_ptr->image, true);
+                        projectPc(pc_topic.pc_ptr, cv_64fc1.image, false);
                         has_projected = true;
                     }
                 }
@@ -197,7 +195,6 @@ void PcProjectionToImageOffline::execute()
                 }
             }
         }
-
         if(debug_hz_ > 0)    loop_rate.sleep();
         view_itr++;
     }
