@@ -260,7 +260,7 @@ void PcProjectionToImageOffline::projectPc(const sensor_msgs::PointCloud2ConstPt
                     cv::circle(image, p2d, 1, CV_RGB(r, g, b), -1);
                 }
                 else{
-                    image.at<float>(p2d.y, p2d.x) = range;
+                    image.at<float>(p2d.y, 2 * p2d.x) = range;
                 }
 			}
 		}
