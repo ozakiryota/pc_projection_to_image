@@ -4,6 +4,7 @@
 		<param name="load_rosbag_path" type="string" value="$(env HOME)/rosbag/sq2_velodyne/dkan_outdoor/2018-10-31-08-37-11_converted_transformed.bag"/>
 		<param name="camera_info_name" type="string" value="/camera/color/camera_info"/>
 		<param name="load_image_name" type="string" value="/camera/color/image_raw/compressed"/>
+		<param name="save_image_name" type="string" value="/test"/>
 		<!-- <param name="debug_hz" type="double" value="100"/> -->
 		<param name="pc_0" type="string" value="/velodyne_points/transformed"/>
 	</node>
