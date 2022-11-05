@@ -197,7 +197,7 @@ void PcProjectionToImageOffline::execute()
                         cv::Mat(camera_model_.cameraInfo().height, camera_model_.cameraInfo().width, CV_64FC1, cv::Scalar(-1))
                     );
                     projectPc(pc_topic.pc_ptr, cv_64fc1.image, false);
-                    save_bag_.write(pc_topic.topic_name + "/" + save_depth_childname_, cv_64fc1.toImageMsg()->header.stamp, cv_64fc1.toImageMsg());
+                    save_bag_.write(pc_topic.topic_name + "/" + save_depth_childname_, view_itr->getTime(), cv_64fc1.toImageMsg());
                     pc_topic.is_buffered = true;
                     break;
                 }
@@ -221,8 +221,8 @@ void PcProjectionToImageOffline::execute()
                     }
                 }
                 if(has_projected){
-                    save_bag_.write(save_image_name_, cv_bgr8_ptr->toImageMsg()->header.stamp, cv_bgr8_ptr->toImageMsg());
-                    save_bag_.write(load_image_name_ + "/" + save_depth_childname_, cv_64fc1.toImageMsg()->header.stamp, cv_64fc1.toImageMsg());
+                    save_bag_.write(save_image_name_, view_itr->getTime(), cv_bgr8_ptr->toImageMsg());
+                    save_bag_.write(load_image_name_ + "/" + save_depth_childname_, view_itr->getTime(), cv_64fc1.toImageMsg());
                     image_debug_pub_.publish(cv_bgr8_ptr->toImageMsg());
                 }
             }
